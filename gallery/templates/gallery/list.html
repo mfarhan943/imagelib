@@ -1,0 +1,10 @@
+<h2>Photo Gallery</h2>
+<ul>
+  {% for photo in photos %}
+    <li>
+      <h3>{{ photo.title }}</h3>
+      <img src="{{ photo.image.thumbnail.url }}" alt="{{ photo.title }}">
+       <img src="{{ photo.image.large.url }}" alt="{{ photo.title }}">
+    </li>
+  {% endfor %}
+</ul>
