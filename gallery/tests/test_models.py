@@ -4,6 +4,7 @@ from django.test import TestCase, override_settings
 from gallery.models import Photo
 from PIL import Image
 import os
+from pictures.tasks import _process_picture
 
 MEDIA_ROOT = tempfile.mkdtemp()
 
@@ -18,45 +19,44 @@ def generate_test_image(name="test.jpg", size=(100, 100), color=(255, 0, 0)):
 
 @override_settings(MEDIA_ROOT=MEDIA_ROOT)
 class PhotoModelTest(TestCase):
-
-    def test_image_upload_and_variations_created(self):
+    def test_image_file_saved(self):
         photo = Photo.objects.create(
-            title='Test Photo', image=generate_test_image())
+            title='Test Photo', image=generate_test_image("test1.jpg"))
 
-        # Variations are auto-generated (if PRE-RENDERED)
         self.assertTrue(photo.image)
         self.assertTrue(os.path.exists(photo.image.path))
-        self.assertTrue(os.path.exists(photo.image.thumbnail.path))
-        self.assertTrue(os.path.exists(photo.image.large.path))
 
-    # def test_orphan_deletion_on_image_update(self):
-    #     image1 = generate_test_image(name="original.jpg")
-    #     photo = Photo.objects.create(title='Replace Image', image=image1)
-    #     old_image_path = photo.image.path
+@override_settings(
+    MEDIA_ROOT=MEDIA_ROOT,
+    PICTURES={
+        "USE_PLACEHOLDERS": False,
+        "PIXEL_DENSITIES": [1, 2],
+        "PROCESSOR": "pictures.tasks._process_picture",
+    },
+    
+)
+class PhotoPictureFieldTest(TestCase):
+    def test_picture_variations_exist_on_disk(self):
+        photo = Photo.objects.create(
+            title='Responsive Test',
+            image=generate_test_image("responsive.jpg", size=(800, 600))
+        )
 
-    #     # Upload a new image with a different name
-    #     image2 = generate_test_image(name="updated.jpg")
-    #     photo.image = image2
-    #     photo.save()
+        field = photo.image
+        storage_tuple = field.storage.deconstruct()  # ✅ use this instead
+        file_name = field.name
+        _process_picture(storage_tuple, file_name)
 
-    #     self.assertEqual(os.path.exists(old_image_path),
-    #                      os.path.exists(photo.image.path))
-    #     self.assertFalse(os.path.exists(old_image_path)
-    #                      )  # should now be deleted
-    #     self.assertTrue(os.path.exists(photo.image.path))
 
-@override_settings(MEDIA_ROOT=MEDIA_ROOT)
-class PhotoVariationTest(TestCase):
-    def test_image_variations_exist(self):
-        photo = Photo.objects.create(title="Variation Test", image=generate_test_image())
+        parent_dir = os.path.splitext(file_name)[0]
+        ratio = "3_2"
+        print("Image variations stored at:", os.path.join(MEDIA_ROOT, parent_dir, ratio))
+        print("Files:", os.listdir(os.path.join(MEDIA_ROOT, parent_dir, ratio)))
 
-        # Main image
-        self.assertTrue(os.path.exists(photo.image.path))
+        sizes = [100, 200, 300, 400, 500, 600, 700, 800]
 
-        # Variation: thumbnail
-        self.assertTrue(hasattr(photo.image, 'thumbnail'))
-        self.assertTrue(os.path.exists(photo.image.thumbnail.path))
-
-        # Variation: large
-        self.assertTrue(hasattr(photo.image, 'large'))
-        self.assertTrue(os.path.exists(photo.image.large.path))
+        for width in sizes:
+            path = os.path.join(
+                MEDIA_ROOT, parent_dir, ratio, f"{width}w.WEBP"
+            )
+            self.assertTrue(os.path.exists(path), f"Missing: {path}")
