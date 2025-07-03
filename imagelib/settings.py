@@ -38,8 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'stdimage',
     'gallery',
+    'pictures',
 ]
 
 MIDDLEWARE = [
@@ -126,3 +126,42 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
+
+# https://github.com/codingjoe/django-pictures?tab=readme-ov-file#settings
+PICTURES = {
+    # Breakpoints for responsive image rendering
+    "BREAKPOINTS": {
+        "xs": 576,   # Extra small devices (e.g. phones)
+        "s": 768,
+        "m": 992,
+        "l": 1200, 
+        "xl": 1400,  # Extra large screens
+    },
+
+    # Number of grid columns used for layout (e.g. Bootstrap-style)
+    "GRID_COLUMNS": 12,
+
+    # Max container width in pixels, used to calculate image sizes
+    "CONTAINER_WIDTH": 1200,
+
+    # File types to generate for image variants
+    "FILE_TYPES": ["WEBP"],
+    "PIXEL_DENSITIES": [1, 2],
+
+    # Whether to use placeholder images in development when actual images are missing
+    "USE_PLACEHOLDERS": False,
+
+    # Name of the Celery queue for processing images (used with async workers)
+    "QUEUE_NAME": "pictures",
+
+    # Task path used for image processing
+    "PROCESSOR": "pictures.tasks.process_picture",
+
+    # Base URL path where image variations are served from (e.g. for <picture> srcset)
+    "BASE_URL": "media/_pictures/",
+}
+
+CELERY_BROKER_URL = "redis://localhost:6379/0"
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"

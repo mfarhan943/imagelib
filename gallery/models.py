@@ -1,15 +1,11 @@
 from django.db import models
-from stdimage.models import StdImageField
+from pictures.models import PictureField
 
 class Photo(models.Model):
     title = models.CharField(max_length=100)
-    image = StdImageField(
-        upload_to='photos/',
-        variations={
-            'thumbnail': (150, 150, True),
-            'large': (800, 600),
-        },
-        delete_orphans=True,
+    image = PictureField(
+        upload_to='photos',
+        aspect_ratios=['3/2'],  # defines variation key used in template
     )
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
